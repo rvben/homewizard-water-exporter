@@ -16,16 +16,43 @@ A Rust-based Prometheus exporter for the HomeWizard Water Meter, providing real-
 - Rust 1.83+ (for building from source)
 - Docker (for container deployment)
 
-## Quick Start
+## Installation
 
-### Using Docker
+### Using Docker (Recommended)
 
 ```bash
+# From Docker Hub
 docker run -d \
   --name homewizard-water-exporter \
   -p 9899:9899 \
   -e HOMEWIZARD_HOST=192.168.1.241 \
-  homewizard-water-exporter:latest
+  rvben/homewizard-water-exporter:latest
+
+# From GitHub Container Registry
+docker run -d \
+  --name homewizard-water-exporter \
+  -p 9899:9899 \
+  -e HOMEWIZARD_HOST=192.168.1.241 \
+  ghcr.io/rvben/homewizard-water-exporter:latest
+```
+
+### Using Pre-built Binaries
+
+Download the latest release for your platform from the [releases page](https://github.com/rvben/homewizard-water-exporter/releases).
+
+```bash
+# Example for Linux x86_64
+wget https://github.com/rvben/homewizard-water-exporter/releases/latest/download/homewizard-water-exporter-x86_64-linux.tar.gz
+tar -xzf homewizard-water-exporter-x86_64-linux.tar.gz
+chmod +x homewizard-water-exporter
+HOMEWIZARD_HOST=192.168.1.241 ./homewizard-water-exporter
+```
+
+### Using Cargo
+
+```bash
+cargo install homewizard-water-exporter
+HOMEWIZARD_HOST=192.168.1.241 homewizard-water-exporter
 ```
 
 ### Building from Source
