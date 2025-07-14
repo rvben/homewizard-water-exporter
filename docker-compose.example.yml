@@ -1,0 +1,12 @@
+services:
+  homewizard-water-exporter:
+    image: homewizard-water-exporter:latest
+    container_name: homewizard-water-exporter
+    environment:
+      - HOMEWIZARD_HOST=192.168.1.241  # Replace with your HomeWizard Water Meter IP
+      - METRICS_PORT=9899
+      - POLL_INTERVAL=60
+      - LOG_LEVEL=info
+    ports:
+      - "9899:9899"
+    restart: unless-stopped
