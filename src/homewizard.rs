@@ -51,6 +51,8 @@ impl HomeWizardClient {
 mod tests {
     use super::*;
     use std::time::Duration;
+    use wiremock::matchers::{method, path};
+    use wiremock::{Mock, MockServer, ResponseTemplate};
 
     #[test]
     fn test_homewizard_client_creation() {
@@ -209,5 +211,236 @@ mod tests {
                 _ => panic!("Expected RequestFailed error"),
             }
         });
+    }
+
+    #[tokio::test]
+    async fn test_fetch_data_success() {
+        let mock_server = MockServer::start().await;
+        let json_response = r#"
+        {
+            "wifi_ssid": "TestNetwork",
+            "wifi_strength": 75.5,
+            "total_liter_m3": 1234.567,
+            "active_liter_lpm": 15.5,
+            "total_liter_offset_m3": 100.0
+        }
+        "#;
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/data"))
+            .respond_with(ResponseTemplate::new(200).set_body_json(
+                serde_json::from_str::<serde_json::Value>(json_response).unwrap(),
+            ))
+            .mount(&mock_server)
+            .await;
+
+        let client = HomeWizardClient::new(
+            format!("{}/api/v1/data", mock_server.uri()),
+            Duration::from_secs(5),
+        )
+        .unwrap();
+
+        let result = client.fetch_data().await;
+        assert!(result.is_ok());
+
+        let data = result.unwrap();
+        assert_eq!(data.wifi_ssid, "TestNetwork");
+        assert_eq!(data.wifi_strength, 75.5);
+        assert_eq!(data.total_liter_m3, 1234.567);
+        assert_eq!(data.active_liter_lpm, 15.5);
+        assert_eq!(data.total_liter_offset_m3, 100.0);
+    }
+
+    #[tokio::test]
+    async fn test_fetch_data_http_error() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/data"))
+            .respond_with(ResponseTemplate::new(500).set_body_string("Internal Server Error"))
+            .mount(&mock_server)
+            .await;
+
+        let client = HomeWizardClient::new(
+            format!("{}/api/v1/data", mock_server.uri()),
+            Duration::from_secs(5),
+        )
+        .unwrap();
+
+        let result = client.fetch_data().await;
+        assert!(result.is_err());
+
+        match result.unwrap_err() {
+            HomeWizardError::ParseError(msg) => {
+                assert!(msg.contains("HTTP status: 500"));
+            }
+            _ => panic!("Expected ParseError"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_fetch_data_malformed_json() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/data"))
+            .respond_with(ResponseTemplate::new(200).set_body_string("invalid json"))
+            .mount(&mock_server)
+            .await;
+
+        let client = HomeWizardClient::new(
+            format!("{}/api/v1/data", mock_server.uri()),
+            Duration::from_secs(5),
+        )
+        .unwrap();
+
+        let result = client.fetch_data().await;
+        assert!(result.is_err());
+
+        match result.unwrap_err() {
+            HomeWizardError::RequestFailed(_) => {
+                // This is expected for JSON parsing errors
+            }
+            _ => panic!("Expected RequestFailed error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_fetch_data_timeout() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/data"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .set_body_string("response")
+                    .set_delay(Duration::from_millis(500)),
+            )
+            .mount(&mock_server)
+            .await;
+
+        let client = HomeWizardClient::new(
+            format!("{}/api/v1/data", mock_server.uri()),
+            Duration::from_millis(100), // Very short timeout
+        )
+        .unwrap();
+
+        let result = client.fetch_data().await;
+        assert!(result.is_err());
+
+        match result.unwrap_err() {
+            HomeWizardError::RequestFailed(_) => {
+                // This is expected for timeout errors
+            }
+            _ => panic!("Expected RequestFailed error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_fetch_data_connection_refused() {
+        // Use a port that's definitely not listening
+        let client = HomeWizardClient::new(
+            "http://127.0.0.1:12345/api/v1/data".to_string(),
+            Duration::from_secs(5),
+        )
+        .unwrap();
+
+        let result = client.fetch_data().await;
+        assert!(result.is_err());
+
+        match result.unwrap_err() {
+            HomeWizardError::RequestFailed(_) => {
+                // This is expected for connection refused errors
+            }
+            _ => panic!("Expected RequestFailed error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_fetch_data_missing_fields() {
+        let mock_server = MockServer::start().await;
+        let incomplete_json = r#"
+        {
+            "wifi_ssid": "TestNetwork",
+            "wifi_strength": 75.5
+        }
+        "#;
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/data"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(incomplete_json))
+            .mount(&mock_server)
+            .await;
+
+        let client = HomeWizardClient::new(
+            format!("{}/api/v1/data", mock_server.uri()),
+            Duration::from_secs(5),
+        )
+        .unwrap();
+
+        let result = client.fetch_data().await;
+        assert!(result.is_err());
+
+        match result.unwrap_err() {
+            HomeWizardError::RequestFailed(_) => {
+                // This is expected for missing fields
+            }
+            _ => panic!("Expected RequestFailed error"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_fetch_data_different_status_codes() {
+        let mock_server = MockServer::start().await;
+
+        // Test 404 Not Found
+        Mock::given(method("GET"))
+            .and(path("/api/v1/data"))
+            .respond_with(ResponseTemplate::new(404))
+            .mount(&mock_server)
+            .await;
+
+        let client = HomeWizardClient::new(
+            format!("{}/api/v1/data", mock_server.uri()),
+            Duration::from_secs(5),
+        )
+        .unwrap();
+
+        let result = client.fetch_data().await;
+        assert!(result.is_err());
+
+        match result.unwrap_err() {
+            HomeWizardError::ParseError(msg) => {
+                assert!(msg.contains("HTTP status: 404"));
+            }
+            _ => panic!("Expected ParseError"),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_fetch_data_empty_response() {
+        let mock_server = MockServer::start().await;
+
+        Mock::given(method("GET"))
+            .and(path("/api/v1/data"))
+            .respond_with(ResponseTemplate::new(200).set_body_string(""))
+            .mount(&mock_server)
+            .await;
+
+        let client = HomeWizardClient::new(
+            format!("{}/api/v1/data", mock_server.uri()),
+            Duration::from_secs(5),
+        )
+        .unwrap();
+
+        let result = client.fetch_data().await;
+        assert!(result.is_err());
+
+        match result.unwrap_err() {
+            HomeWizardError::RequestFailed(_) => {
+                // This is expected for empty responses
+            }
+            _ => panic!("Expected RequestFailed error"),
+        }
     }
 }
