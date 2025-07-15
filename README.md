@@ -1,20 +1,42 @@
 # HomeWizard Water Prometheus Exporter
 
+[![CI](https://github.com/rvben/homewizard-water-exporter/actions/workflows/ci.yml/badge.svg)](https://github.com/rvben/homewizard-water-exporter/actions/workflows/ci.yml)
+[![Release](https://github.com/rvben/homewizard-water-exporter/actions/workflows/release.yml/badge.svg)](https://github.com/rvben/homewizard-water-exporter/actions/workflows/release.yml)
+[![Crates.io](https://img.shields.io/crates/v/homewizard-water-exporter.svg)](https://crates.io/crates/homewizard-water-exporter)
+[![Docker Pulls](https://img.shields.io/docker/pulls/rvben/homewizard-water-exporter)](https://hub.docker.com/r/rvben/homewizard-water-exporter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Rust](https://img.shields.io/badge/rust-1.88%2B-blue.svg)](https://www.rust-lang.org)
+
 A Rust-based Prometheus exporter for the HomeWizard Water Meter, providing real-time water consumption metrics.
 
 ## Features
 
-- Real-time water consumption monitoring
-- Active flow rate tracking
-- WiFi signal strength monitoring
-- Lightweight and efficient Rust implementation
-- 60-second default polling interval (water usage changes less frequently than electricity)
+- 💧 **Real-time Monitoring** - Water consumption metrics updated every 60 seconds
+- 🚰 **Flow Rate Tracking** - Active water flow measurement in liters per minute
+- 📊 **Total Consumption** - Cumulative water usage tracking in cubic meters
+- 📡 **Network Monitoring** - WiFi signal strength tracking
+- 🚀 **High Performance** - Lightweight Rust implementation with minimal resource usage
+- 🐳 **Docker Ready** - Multi-platform images for easy deployment
+- ✅ **Production Ready** - Comprehensive test coverage and error handling
+- 🔧 **Offset Support** - Handle meter replacements with offset tracking
 
 ## Prerequisites
 
 - HomeWizard Water Meter with local API enabled
-- Rust 1.83+ (for building from source)
+- Rust 1.88+ (for building from source)
 - Docker (for container deployment)
+
+## Quick Start
+
+```bash
+# Using Docker
+docker run -d -p 9899:9899 -e HOMEWIZARD_HOST=192.168.1.241 rvben/homewizard-water-exporter:latest
+
+# Or using pre-built binary
+wget https://github.com/rvben/homewizard-water-exporter/releases/latest/download/homewizard-water-exporter-$(uname -m)-linux.tar.gz
+tar -xzf homewizard-water-exporter-*.tar.gz
+HOMEWIZARD_HOST=192.168.1.241 ./homewizard-water-exporter
+```
 
 ## Installation
 
