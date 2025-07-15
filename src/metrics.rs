@@ -92,3 +92,201 @@ impl Metrics {
         Ok(String::from_utf8(buffer)?)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::homewizard::HomeWizardWaterData;
+
+    fn create_test_data() -> HomeWizardWaterData {
+        HomeWizardWaterData {
+            wifi_ssid: "TestNetwork".to_string(),
+            wifi_strength: 75.5,
+            total_liter_m3: 1234.567,
+            active_liter_lpm: 15.5,
+            total_liter_offset_m3: 100.0,
+        }
+    }
+
+    #[test]
+    fn test_metrics_creation() {
+        let metrics = Metrics::new();
+        assert!(metrics.is_ok());
+    }
+
+    #[test]
+    fn test_metrics_update() {
+        let metrics = Metrics::new().unwrap();
+        let data = create_test_data();
+
+        let result = metrics.update(&data);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_metrics_gather() {
+        let metrics = Metrics::new().unwrap();
+        let data = create_test_data();
+
+        metrics.update(&data).unwrap();
+        let result = metrics.gather();
+        assert!(result.is_ok());
+
+        let output = result.unwrap();
+        assert!(output.contains("homewizard_water_total_m3"));
+        assert!(output.contains("homewizard_water_active_flow_lpm"));
+        assert!(output.contains("homewizard_water_offset_m3"));
+        assert!(output.contains("homewizard_water_wifi_strength_percent"));
+        assert!(output.contains("homewizard_water_meter_info"));
+    }
+
+    #[test]
+    fn test_metrics_water_values() {
+        let metrics = Metrics::new().unwrap();
+        let data = create_test_data();
+
+        metrics.update(&data).unwrap();
+        let output = metrics.gather().unwrap();
+
+        assert!(output.contains("homewizard_water_total_m3 1234.567"));
+        assert!(output.contains("homewizard_water_active_flow_lpm 15.5"));
+        assert!(output.contains("homewizard_water_offset_m3 100"));
+    }
+
+    #[test]
+    fn test_metrics_network_values() {
+        let metrics = Metrics::new().unwrap();
+        let data = create_test_data();
+
+        metrics.update(&data).unwrap();
+        let output = metrics.gather().unwrap();
+
+        assert!(output.contains("homewizard_water_wifi_strength_percent 75.5"));
+    }
+
+    #[test]
+    fn test_metrics_meter_info_values() {
+        let metrics = Metrics::new().unwrap();
+        let data = create_test_data();
+
+        metrics.update(&data).unwrap();
+        let output = metrics.gather().unwrap();
+
+        assert!(output.contains("homewizard_water_meter_info{wifi_ssid=\"TestNetwork\"} 1"));
+    }
+
+    #[test]
+    fn test_metrics_with_zero_values() {
+        let metrics = Metrics::new().unwrap();
+        let mut data = create_test_data();
+        data.total_liter_m3 = 0.0;
+        data.active_liter_lpm = 0.0;
+        data.total_liter_offset_m3 = 0.0;
+        data.wifi_strength = 0.0;
+
+        metrics.update(&data).unwrap();
+        let output = metrics.gather().unwrap();
+
+        assert!(output.contains("homewizard_water_total_m3 0"));
+        assert!(output.contains("homewizard_water_active_flow_lpm 0"));
+        assert!(output.contains("homewizard_water_offset_m3 0"));
+        assert!(output.contains("homewizard_water_wifi_strength_percent 0"));
+    }
+
+    #[test]
+    fn test_metrics_update_multiple_times() {
+        let metrics = Metrics::new().unwrap();
+        let mut data = create_test_data();
+
+        // First update
+        metrics.update(&data).unwrap();
+        let output1 = metrics.gather().unwrap();
+        assert!(output1.contains("homewizard_water_active_flow_lpm 15.5"));
+
+        // Second update with different values
+        data.active_liter_lpm = 25.0;
+        metrics.update(&data).unwrap();
+        let output2 = metrics.gather().unwrap();
+        assert!(output2.contains("homewizard_water_active_flow_lpm 25"));
+    }
+
+    #[test]
+    fn test_metrics_large_values() {
+        let metrics = Metrics::new().unwrap();
+        let mut data = create_test_data();
+        data.total_liter_m3 = 999999.999;
+        data.active_liter_lpm = 999.0;
+        data.total_liter_offset_m3 = 500.0;
+
+        metrics.update(&data).unwrap();
+        let output = metrics.gather().unwrap();
+
+        assert!(output.contains("homewizard_water_total_m3 999999.999"));
+        assert!(output.contains("homewizard_water_active_flow_lpm 999"));
+        assert!(output.contains("homewizard_water_offset_m3 500"));
+    }
+
+    #[test]
+    fn test_metrics_with_different_wifi_network() {
+        let metrics = Metrics::new().unwrap();
+        let mut data = create_test_data();
+        data.wifi_ssid = "DifferentNetwork".to_string();
+
+        metrics.update(&data).unwrap();
+        let output = metrics.gather().unwrap();
+
+        assert!(output.contains("homewizard_water_meter_info{wifi_ssid=\"DifferentNetwork\"} 1"));
+    }
+
+    #[test]
+    fn test_metrics_with_high_flow_rate() {
+        let metrics = Metrics::new().unwrap();
+        let mut data = create_test_data();
+        data.active_liter_lpm = 1000.0;
+
+        metrics.update(&data).unwrap();
+        let output = metrics.gather().unwrap();
+
+        assert!(output.contains("homewizard_water_active_flow_lpm 1000"));
+    }
+
+    #[test]
+    fn test_metrics_with_negative_offset() {
+        let metrics = Metrics::new().unwrap();
+        let mut data = create_test_data();
+        data.total_liter_offset_m3 = -50.0;
+
+        metrics.update(&data).unwrap();
+        let output = metrics.gather().unwrap();
+
+        assert!(output.contains("homewizard_water_offset_m3 -50"));
+    }
+
+    #[test]
+    fn test_metrics_with_weak_wifi() {
+        let metrics = Metrics::new().unwrap();
+        let mut data = create_test_data();
+        data.wifi_strength = 10.0;
+
+        metrics.update(&data).unwrap();
+        let output = metrics.gather().unwrap();
+
+        assert!(output.contains("homewizard_water_wifi_strength_percent 10"));
+    }
+
+    #[test]
+    fn test_metrics_with_decimal_values() {
+        let metrics = Metrics::new().unwrap();
+        let mut data = create_test_data();
+        data.total_liter_m3 = 123.456;
+        data.active_liter_lpm = 7.89;
+        data.total_liter_offset_m3 = 12.34;
+
+        metrics.update(&data).unwrap();
+        let output = metrics.gather().unwrap();
+
+        assert!(output.contains("homewizard_water_total_m3 123.456"));
+        assert!(output.contains("homewizard_water_active_flow_lpm 7.89"));
+        assert!(output.contains("homewizard_water_offset_m3 12.34"));
+    }
+}
