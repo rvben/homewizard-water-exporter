@@ -6,6 +6,12 @@ authors = ["Ruben J. Jongejan <ruben.jongejan@gmail.com>"]
 description = "Prometheus exporter for HomeWizard Water Meter"
 license = "MIT"
 repository = "https://github.com/rvben/homewizard-water-exporter"
+homepage = "https://github.com/rvben/homewizard-water-exporter"
+documentation = "https://docs.rs/homewizard-water-exporter"
+keywords = ["prometheus", "exporter", "homewizard", "water", "monitoring"]
+categories = ["command-line-utilities", "web-programming"]
+readme = "README.md"
+exclude = ["target/", ".github/", "*.md"]
 
 [dependencies]
 # Async runtime
