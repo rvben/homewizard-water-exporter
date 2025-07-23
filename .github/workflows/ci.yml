@@ -36,7 +36,7 @@ jobs:
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
       with:
-        file: ./cobertura.xml
+        files: ./cobertura.xml
         fail_ci_if_error: false
 
   build:
@@ -52,7 +52,7 @@ jobs:
         components: rustfmt, clippy
     
     - name: Build release binary
-      run: make release
+      run: make build-release
     
     - name: Upload artifact
       uses: actions/upload-artifact@v4
