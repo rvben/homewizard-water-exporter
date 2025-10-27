@@ -55,7 +55,7 @@ jobs:
       run: make build-release
     
     - name: Upload artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v5
       with:
         name: homewizard-water-exporter
         path: target/release/homewizard-water-exporter
