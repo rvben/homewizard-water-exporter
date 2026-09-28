@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8](https://github.com/rvben/homewizard-water-exporter/compare/v0.1.7...v0.1.8) - 2026-09-28
+
+### Fixed
+
+- **deps**: update rustls to 0.23.45 for RUSTSEC-2026-0285 ([69c5ccd](https://github.com/rvben/homewizard-water-exporter/commit/69c5ccdcb7360325cfaff99fd46a3f89c1f06fc3))
+
 ## [0.1.5] - 2025-01-23
 
 ### Added
